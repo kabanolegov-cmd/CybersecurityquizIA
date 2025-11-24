@@ -1,1 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Defense Quiz</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font */
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
+    <!-- Main Container -->
+    <div id="quiz-container" class="w-full max-w-3xl bg-white shadow-2xl rounded-xl p-6 md:p-10 transition-all duration-300">
+        
+        <!-- Header and Scoreboard -->
+        <header class="mb-8 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800">🛡️ Cybersecurity Defense Test</h1>
+            <p class="text-gray-500 mt-1">Identify the defense or vulnerability for each scenario.</p>
+            <div class="mt-3 text-lg font-semibold text-indigo-600">
+                Score: <span id="score-display">0</span> / 100
+                <span id="question-count" class="text-sm text-gray-400 font-normal ml-2"></span>
+            </div>
+        </header>
+
+        <!-- Quiz Content Area -->
+        <div id="quiz-content">
+            
+            <!-- Scenario Card -->
+            <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg shadow-inner mb-6">
+                <h2 class="text-xl font-semibold text-indigo-800 mb-2">Scenario:</h2>
+                <p id="scenario-text" class="text-gray-700 leading-relaxed"></p>
+            </div>
+
+            <!-- Question & Input -->
+            <div class="mb-6">
+                <p id="question-text" class="text-lg font-medium text-gray-800 mb-3"></p>
+                <input type="text" id="answer-input" placeholder="Type your answer here..."
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 shadow-sm"
+                       onkeydown="if(event.key === 'Enter') checkAnswer();">
+            </div>
+
+            <!-- Feedback & Hint Area -->
+            <div id="feedback-area" class="h-10 mb-4 transition-all duration-500"></div>
+            
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="checkAnswer()"
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md shadow-indigo-300">
+                    Submit Answer
+                </button>
+                <button onclick="giveHint()" id="hint-button"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                    Get Hint (0/2 Used)
+                </button>
+            </div>
+        </div>
+
+        <!-- Final Results Screen (Hidden initially) -->
+        <div id="results-screen" class="hidden text-center p-8 bg-green-50 rounded-lg border-2 border-green-300">
+            <h2 class="text-3xl font-extrabold text-green-700 mb-4">TEST COMPLETE!</h2>
+            <p class="text-xl text-gray-700 mb-6">Your final score is:</p>
+            <p id="final-score" class="text-6xl font-black text-green-600 mb-8"></p>
+            <button onclick="location.reload()"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg">
+                Restart Test
+            </button>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. Data Structure (Copied from Python) ---
+        const SCENARIOS = [
+            {
+                "id": 1,
+                "problem": "A critical server log shows thousands of login attempts in quick succession from the same IP address over a few minutes. The account eventually locks after 10 tries. This suggests an attacker is using a dictionary of common passwords.",
+                "question": "What primary defense mechanism was active that limited the attacker's success before the account locked?",
+                "answer": "rate limiting",
+                "hints": ["This defense controls the speed of requests, not the number of total failures.", "It enforces a time delay, often limiting attempts to 'X per second'."]
+            },
+            {
+                "id": 2,
+                "problem": "An employee accidentally clicks a link in a convincing email that appeared to be from their bank, immediately installing a small piece of malicious software. This software then records their keystrokes.",
+                "question": "What is the technical term for this type of deceptive, unwanted software (malicious software)?",
+                "answer": "malware",
+                "hints": ["It is a general term for any hostile or intrusive software.", "The name is a blend of 'malicious' and 'software'."]
+            },
+            {
+                "id": 3,
+                "problem": "A company uses a public forum where users interact. A developer forgot to clean user input before displaying it on the page. An attacker posted a malicious script, which now executes every time another user views that post, stealing their session cookies.",
+                "question": "What is the name of this vulnerability, where malicious code is injected into a website?",
+                "answer": "cross-site scripting",
+                "hints": ["Often abbreviated as XSS.", "The fix requires input validation and output encoding."]
+            },
+            {
+                "id": 4,
+                "problem": "A developer configured a database query by directly combining user-supplied text with the SQL command. An attacker inputs a special string (like ' OR 1=1 --), which tricks the database into returning all records, bypassing authentication.",
+                "question": "What type of attack involves manipulating structured query language (SQL) commands?",
+                "answer": "sql injection",
+                "hints": ["It targets the database language.", "The solution involves using prepared statements."]
+            }
+        ];
+
+        // --- 2. State Variables ---
+        let currentQuestionIndex = 0;
+        let totalScore = 0;
+        const maxScore = SCENARIOS.length * 25;
+        let hintsGiven = 0;
+
+        // --- 3. Core Logic Functions ---
+
+        /** Cleans the user's input for consistent comparison. */
+        function normalizeAnswer(text) {
+            // Uses a regex to remove non-alphanumeric characters (except spaces)
+            return text.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase().trim();
+        }
+
+        /** Loads the current question data into the UI. */
+        function loadQuestion() {
+            if (currentQuestionIndex >= SCENARIOS.length) {
+                showResults();
+                return;
+            }
+
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+            
+            // Reset state for new question
+            hintsGiven = 0;
+            document.getElementById('answer-input').value = '';
+            document.getElementById('feedback-area').innerHTML = '';
+            
+            // Update UI elements
+            document.getElementById('scenario-text').textContent = currentScenario.problem;
+            document.getElementById('question-text').textContent = currentScenario.question;
+            document.getElementById('question-count').textContent = `Question ${currentQuestionIndex + 1} of ${SCENARIOS.length}`;
+            
+            // Update hint button
+            updateHintButton();
+        }
+
+        /** Updates the text on the hint button */
+        function updateHintButton() {
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+            const remainingHints = currentScenario.hints.length - hintsGiven;
+            const hintButton = document.getElementById('hint-button');
+
+            if (remainingHints > 0) {
+                hintButton.textContent = `Get Hint (${hintsGiven}/${currentScenario.hints.length} Used)`;
+                hintButton.disabled = false;
+                hintButton.classList.replace('bg-gray-400', 'bg-gray-200');
+            } else {
+                hintButton.textContent = `No More Hints`;
+                hintButton.disabled = true;
+                hintButton.classList.replace('bg-gray-200', 'bg-gray-400');
+            }
+        }
+        
+        /** Checks the user's answer and handles scoring/feedback. */
+        function checkAnswer() {
+            const inputElement = document.getElementById('answer-input');
+            const feedbackArea = document.getElementById('feedback-area');
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+            
+            const normalizedInput = normalizeAnswer(inputElement.value);
+            const normalizedCorrectAnswer = normalizeAnswer(currentScenario.answer);
+            
+            // Clear previous feedback
+            feedbackArea.innerHTML = '';
+
+            if (normalizedInput === normalizedCorrectAnswer) {
+                // Correct Answer Logic
+                const scoreForQuestion = 25;
+                totalScore += scoreForQuestion;
+                
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                        ✅ CORRECT! You earn ${scoreForQuestion} points.
+                    </div>
+                `;
+                document.getElementById('score-display').textContent = totalScore;
+
+                // Move to next question after a brief delay
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    loadQuestion();
+                }, 1000);
+
+            } else {
+                // Incorrect Answer Logic
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                        ❌ Incorrect answer. Try again, or click 'Get Hint'.
+                    </div>
+                `;
+            }
+        }
+
+        /** Displays a hint to the user. */
+        function giveHint() {
+            const feedbackArea = document.getElementById('feedback-area');
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+
+            if (hintsGiven < currentScenario.hints.length) {
+                const hint = currentScenario.hints[hintsGiven];
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg">
+                        💡 **Hint ${hintsGiven + 1}:** ${hint}
+                    </div>
+                `;
+                hintsGiven++;
+                updateHintButton();
+            } else {
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-gray-100 border border-gray-400 text-gray-700 rounded-lg">
+                        No more hints available for this question.
+                    </div>
+                `;
+            }
+        }
+
+        /** Displays the final results screen. */
+        function showResults() {
+            document.getElementById('quiz-content').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+            document.getElementById('final-score').textContent = `${totalScore}/${maxScore}`;
+        }
+        
+        // --- 4. Initialization ---
+        window.onload = loadQuestion;
+
+    </script>
+</body>
+</html>
