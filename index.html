@@ -1,147 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Defense Quiz</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font */
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-import re
-
-# --- Configuration and Scenarios ---
-
-# Define the structure for each cybersecurity problem
-# Score is 25 points per correct answer (4 questions total = 100 points)
-SCENARIOS = [
-    {
-        "id": 1,
-        "problem": (
-            "Scenario: A critical server log shows thousands of login attempts in quick succession "
-            "from the same IP address over a few minutes. The account eventually locks after 10 tries. "
-            "This suggests an attacker is using a dictionary of common passwords."
-        ),
-        "question": "What primary defense mechanism was active that limited the attacker's success before the account locked?",
-        "answer": "rate limiting",
-        "hints": [
-            "This defense controls the speed of requests, not the number of total failures.",
-            "It enforces a time delay, often limiting attempts to 'X per second'."
-        ]
-    },
-    {
-        "id": 2,
-        "problem": (
-            "Scenario: An employee accidentally clicks a link in a convincing email that appeared to be from their "
-            "bank, immediately installing a small piece of malicious software. This software then records their keystrokes."
-        ),
-        "question": "What is the technical term for this type of deceptive, unwanted software (malicious software)?",
-        "answer": "malware",
-        "hints": [
-            "It is a general term for any hostile or intrusive software.",
-            "The name is a blend of 'malicious' and 'software'."
-        ]
-    },
-    {
-        "id": 3,
-        "problem": (
-            "Scenario: A company uses a public forum where users interact. A developer forgot to clean user input "
-            "before displaying it on the page. An attacker posted a malicious script, which now executes every time "
-            "another user views that post, stealing their session cookies."
-        ),
-        "question": "What is the name of this vulnerability, where malicious code is injected into a website?",
-        "answer": "cross-site scripting",
-        "hints": [
-            "Often abbreviated as XSS.",
-            "The fix requires input validation and output encoding."
-        ]
-    },
-    {
-        "id": 4,
-        "problem": (
-            "Scenario: A developer configured a database query by directly combining user-supplied text with the SQL command. "
-            "An attacker inputs a special string (like `' OR 1=1 --`), which tricks the database into returning all records, bypassing authentication."
-        ),
-        "question": "What type of attack involves manipulating structured query language (SQL) commands?",
-        "answer": "sql injection",
-        "hints": [
-            "It targets the database language.",
-            "The solution involves using prepared statements."
-        ]
-    }
-]
-
-# --- Core Game Logic ---
-
-def normalize_answer(answer):
-    """Cleans the user's input for consistent comparison."""
-    # Remove punctuation, convert to lowercase, and strip extra spaces
-    # This ensures "Rate-Limiting" == "rate limiting"
-    return re.sub(r'[^a-z0-9\s]', '', answer.lower()).strip()
-
-def run_cyber_test():
-    """Runs the interactive scenario-based test."""
-    total_score = 0
-    max_score = len(SCENARIOS) * 25
-    
-    print("\n" + "="*60)
-    print("🛡️ Cybersecurity Defense Test (IA Simulation)")
-    print(f"Goal: Identify the defense or vulnerability for each scenario.")
-    print(f"Total Questions: {len(SCENARIOS)} | Max Score: {max_score}/100")
-    print("Type 'Hint' at any time for assistance.")
-    print("="*60 + "\n")
-
-    for i, scenario in enumerate(SCENARIOS):
-        print(f"\n--- Scenario {i + 1} of {len(SCENARIOS)} ---")
-        print(scenario["problem"])
-        print("\nQuestion: " + scenario["question"])
+    <!-- Main Container -->
+    <div id="quiz-container" class="w-full max-w-3xl bg-white shadow-2xl rounded-xl p-6 md:p-10 transition-all duration-300">
         
-        answered_correctly = False
-        hints_given = 0
+        <!-- Header and Scoreboard -->
+        <header class="mb-8 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800">🛡️ Cybersecurity Defense Test</h1>
+            <p class="text-gray-500 mt-1">Identify the defense or vulnerability for each scenario.</p>
+            
+            <div class="mt-3 text-lg font-semibold text-indigo-600">
+                Current Score: <span id="score-display">0</span> / 100 (Max Potential)
+                <span id="question-count" class="text-sm text-gray-400 font-normal ml-2"></span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+                Scoring: Correct Answer (+25 max) | Hint (-10 per hint) | Skip (-25)
+            </p>
+        </header>
+
+        <!-- Quiz Content Area -->
+        <div id="quiz-content">
+            
+            <!-- Scenario Card -->
+            <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg shadow-inner mb-6">
+                <h2 class="text-xl font-semibold text-indigo-800 mb-2">Scenario:</h2>
+                <p id="scenario-text" class="text-gray-700 leading-relaxed"></p>
+            </div>
+
+            <!-- Question & Input -->
+            <div class="mb-6">
+                <p id="question-text" class="text-lg font-medium text-gray-800 mb-3"></p>
+                <input type="text" id="answer-input" placeholder="Type your answer here..."
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 shadow-sm"
+                       onkeydown="if(event.key === 'Enter') checkAnswer();">
+            </div>
+
+            <!-- Feedback & Hint Area -->
+            <div id="feedback-area" class="h-10 mb-4 transition-all duration-500"></div>
+            
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-3 gap-3">
+                <button onclick="checkAnswer()"
+                        class="col-span-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-2 rounded-lg transition duration-200 shadow-md shadow-indigo-300">
+                    Submit
+                </button>
+                <button onclick="giveHint()" id="hint-button"
+                        class="col-span-1 bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-bold py-3 px-2 rounded-lg transition duration-200 shadow-md">
+                    Hint (0/2) -10/use
+                </button>
+                <button onclick="skipQuestion()"
+                        class="col-span-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-2 rounded-lg transition duration-200 shadow-md">
+                    Skip (-25)
+                </button>
+            </div>
+        </div>
+
+        <!-- Final Results Screen (Hidden initially) -->
+        <div id="results-screen" class="hidden text-center p-8 bg-gray-100 rounded-lg border-2 border-gray-300">
+            <h2 class="text-3xl font-extrabold text-gray-700 mb-4">TEST COMPLETE!</h2>
+            <p class="text-xl text-gray-700 mb-6">Your final score is:</p>
+            <p id="final-score" class="text-6xl font-black mb-8"></p>
+            <p id="score-analysis" class="text-md text-gray-600 mb-4"></p>
+            <button onclick="location.reload()"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg">
+                Restart Test
+            </button>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. Data Structure ---
+        const SCENARIOS = [
+            {
+                "id": 1,
+                "problem": "A critical server log shows thousands of login attempts in quick succession from the same IP address over a few minutes. The account eventually locks after 10 tries. This suggests an attacker is using a dictionary of common passwords.",
+                "question": "What primary defense mechanism was active that limited the attacker's success before the account locked?",
+                "answer": "rate limiting",
+                "hints": ["This defense controls the speed of requests, not the number of total failures.", "It enforces a time delay, often limiting attempts to 'X per second'."]
+            },
+            {
+                "id": 2,
+                "problem": "An employee accidentally clicks a link in a convincing email that appeared to be from their bank, immediately installing a small piece of malicious software. This software then records their keystrokes.",
+                "question": "What is the technical term for this type of deceptive, unwanted software (malicious software)?",
+                "answer": "malware",
+                "hints": ["It is a general term for any hostile or intrusive software.", "The name is a blend of 'malicious' and 'software'."]
+            },
+            {
+                "id": 3,
+                "problem": "A company uses a public forum where users interact. A developer forgot to clean user input before displaying it on the page. An attacker posted a malicious script, which now executes every time another user views that post, stealing their session cookies.",
+                "question": "What is the name of this vulnerability, where malicious code is injected into a website?",
+                "answer": "cross-site scripting",
+                "hints": ["Often abbreviated as XSS.", "The fix requires input validation and output encoding."]
+            },
+            {
+                "id": 4,
+                "problem": "A developer configured a database query by directly combining user-supplied text with the SQL command. An attacker inputs a special string (like ' OR 1=1 --), which tricks the database into returning all records, bypassing authentication.",
+                "question": "What type of attack involves manipulating structured query language (SQL) commands?",
+                "answer": "sql injection",
+                "hints": ["It targets the database language.", "The solution involves using prepared statements."]
+            }
+        ];
+
+        // --- 2. State Variables ---
+        let currentQuestionIndex = 0;
+        let totalScore = 0;
+        const maxScore = SCENARIOS.length * 25;
+        let hintsGiven = 0;
+        const HINT_PENALTY = 10;
+        const CORRECT_SCORE = 25;
+        const SKIP_PENALTY = 25;
+
+        // --- 3. Core Logic Functions ---
+
+        /** Cleans the user's input for consistent comparison. */
+        function normalizeAnswer(text) {
+            return text.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase().trim();
+        }
         
-        # Pre-normalize the correct answer for efficiency
-        normalized_correct_answer = normalize_answer(scenario["answer"])
+        /** Updates the score display in the UI. */
+        function updateScoreDisplay() {
+            document.getElementById('score-display').textContent = totalScore;
+        }
+
+        /** Loads the current question data into the UI. */
+        function loadQuestion() {
+            if (currentQuestionIndex >= SCENARIOS.length) {
+                showResults();
+                return;
+            }
+
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+            
+            // Reset state for new question
+            hintsGiven = 0;
+            document.getElementById('answer-input').value = '';
+            document.getElementById('feedback-area').innerHTML = '';
+            
+            // Update UI elements
+            document.getElementById('scenario-text').textContent = currentScenario.problem;
+            document.getElementById('question-text').textContent = currentScenario.question;
+            document.getElementById('question-count').textContent = `Question ${currentQuestionIndex + 1} of ${SCENARIOS.length}`;
+            
+            // Update hint button
+            updateHintButton();
+        }
+
+        /** Updates the text on the hint button */
+        function updateHintButton() {
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+            const hintButton = document.getElementById('hint-button');
+            const totalHints = currentScenario.hints.length;
+            const remainingHints = totalHints - hintsGiven;
+
+            if (remainingHints > 0) {
+                hintButton.textContent = `Hint (${hintsGiven}/${totalHints}) -10/use`;
+                hintButton.disabled = false;
+                hintButton.classList.remove('bg-gray-400');
+                hintButton.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
+            } else {
+                hintButton.textContent = `No More Hints`;
+                hintButton.disabled = true;
+                hintButton.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                hintButton.classList.add('bg-gray-400');
+            }
+        }
         
-        # Main input loop for the current question
-        while not answered_correctly:
-            try:
-                # FIX: Catch EOFError if input stream closes unexpectedly
-                user_input = input("Your Answer (or 'Hint'): ").strip()
-            except EOFError:
-                print("\n\n-- Input stream closed unexpectedly. Ending test gracefully. --")
-                # Return immediately to stop the program cleanly
-                return
+        /** Checks the user's answer and handles scoring/feedback. */
+        function checkAnswer() {
+            const inputElement = document.getElementById('answer-input');
+            const feedbackArea = document.getElementById('feedback-area');
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+            
+            const normalizedInput = normalizeAnswer(inputElement.value);
+            const normalizedCorrectAnswer = normalizeAnswer(currentScenario.answer);
+            
+            // Clear previous feedback
+            feedbackArea.innerHTML = '';
+
+            if (normalizedInput === normalizedCorrectAnswer) {
+                // Correct Answer Logic
                 
-            normalized_input = normalize_answer(user_input)
-            
-            if normalized_input == "hint":
-                if hints_given < len(scenario["hints"]):
-                    print(f"\n💡 Hint: {scenario['hints'][hints_given]}")
-                    hints_given += 1
-                else:
-                    print("\n💡 No more hints available for this question.")
-            
-            elif normalized_input == normalized_correct_answer:
-                # Correct Answer
-                score_for_question = 25
-                total_score += score_for_question
-                print(f"✅ CORRECT! You earn {score_for_question} points.")
-                print(f"Current Score: {total_score}/{max_score}")
-                answered_correctly = True
+                const hintDeduction = hintsGiven * HINT_PENALTY;
+                const scoreAwarded = Math.max(0, CORRECT_SCORE - hintDeduction);
+                totalScore += scoreAwarded;
                 
-            elif user_input: # If user typed something other than a hint or empty
-                print("❌ Incorrect answer. Try again, or type 'Hint'.")
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                        ✅ CORRECT! Base Score: ${CORRECT_SCORE}. Hint Penalty: -${hintDeduction}. Points Awarded: ${scoreAwarded}.
+                    </div>
+                `;
+                updateScoreDisplay();
+
+                // Move to next question after a brief delay
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    loadQuestion();
+                }, 1000);
+
+            } else {
+                // Incorrect Answer Logic
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                        ❌ Incorrect answer. Try again, or use a Hint/Skip.
+                    </div>
+                `;
+            }
+        }
+
+        /** Displays a hint to the user. */
+        function giveHint() {
+            const feedbackArea = document.getElementById('feedback-area');
+            const currentScenario = SCENARIOS[currentQuestionIndex];
+
+            if (hintsGiven < currentScenario.hints.length) {
+                const hint = currentScenario.hints[hintsGiven];
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg">
+                        💡 **Hint ${hintsGiven + 1}:** ${hint}
+                    </div>
+                `;
+                hintsGiven++;
+                updateHintButton();
+            } else {
+                feedbackArea.innerHTML = `
+                    <div class="p-3 bg-gray-100 border border-gray-400 text-gray-700 rounded-lg">
+                        No more hints available for this question.
+                    </div>
+                `;
+            }
+        }
+        
+        /** Skips the current question with a penalty. */
+        function skipQuestion() {
+            const feedbackArea = document.getElementById('feedback-area');
             
-            else: # If user just pressed Enter
-                print("Please enter an answer or type 'Hint'.")
+            totalScore -= SKIP_PENALTY;
+            
+            feedbackArea.innerHTML = `
+                <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    ⏭️ Question skipped. Penalty of -${SKIP_PENALTY} points applied.
+                </div>
+            `;
+            updateScoreDisplay();
+            
+            // Move to next question after a brief delay
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 1000);
+        }
 
-    # Final Results
-    print("\n" + "="*60)
-    print("             TEST COMPLETE")
-    print(f"             FINAL SCORE: {total_score}/{max_score}")
-    print("="*60)
-    
-    # Provide analysis based on score
-    if total_score == max_score:
-        print("\n🎉 Congratulations! You demonstrated expert-level defense knowledge.")
-    elif total_score >= max_score * 0.5:
-        print("\n👍 Good job! You have a solid understanding of key defenses.")
-    else:
-        print("\n📚 Time to review. Focus on the core concepts.")
+        /** Displays the final results screen. Handles score analysis and styling based on final score. */
+        function showResults() {
+            // Get necessary elements. If any of these are null, the app will crash here.
+            const quizContent = document.getElementById('quiz-content');
+            const resultsScreen = document.getElementById('results-screen');
+            const finalScoreElement = document.getElementById('final-score');
+            const analysisElement = document.getElementById('score-analysis');
 
+            // CRITICAL CHECK: Ensure elements exist before trying to manipulate them
+            if (!quizContent || !resultsScreen || !finalScoreElement || !analysisElement) {
+                console.error("Fatal Error: One or more required result elements (quiz-content, results-screen, final-score, score-analysis) are missing from the HTML.");
+                return; // Stop execution to prevent further errors
+            }
 
-# --- Execution ---
+            quizContent.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            
+            finalScoreElement.textContent = `${totalScore}/${maxScore}`;
+            
+            // --- Logic for Styling and analysis based on totalScore ---
+            let analysisText = '';
+            
+            // Reset colors and styles for the results screen
+            finalScoreElement.classList.remove('text-green-600', 'text-yellow-600', 'text-red-700', 'text-red-600');
+            resultsScreen.classList.remove('bg-green-50', 'bg-yellow-50', 'bg-red-100', 'bg-red-50', 'border-green-300', 'border-yellow-300', 'border-red-500', 'border-red-300');
+            
+            if (totalScore <= 0) {
+                // Specific message for zero or negative score
+                analysisText = "Try to study more. Test completed";
+                finalScoreElement.classList.add('text-red-700');
+                resultsScreen.classList.add('bg-red-100', 'border-red-500');
+            } else if (totalScore >= maxScore * 0.75) {
+                analysisText = "🎉 Excellent! You have a near-expert understanding of cybersecurity defenses and vulnerabilities.";
+                finalScoreElement.classList.add('text-green-600');
+                resultsScreen.classList.add('bg-green-50', 'border-green-300');
+            } else if (totalScore >= maxScore * 0.3) {
+                analysisText = "👍 Good job! You understand the key concepts but should review the areas where hints or skips were used.";
+                finalScoreElement.classList.add('text-yellow-600');
+                resultsScreen.classList.add('bg-yellow-50', 'border-yellow-300');
+            } else {
+                // Low positive score
+                analysisText = "📚 Needs review. Focus on the core defense mechanisms and common attack vectors.";
+                finalScoreElement.classList.add('text-red-600');
+                resultsScreen.classList.add('bg-red-50', 'border-red-300');
+            }
+            
+            analysisElement.textContent = analysisText;
+        }
+        
+        // --- 4. Initialization ---
+        window.onload = loadQuestion;
 
-if __name__ == "__main__":
-    run_cyber_test()
+    </script>
+</body>
+</html>
